@@ -113,9 +113,9 @@ payments-service/
 
 Создание платежа.
 
-- **Заголовки:** `X-API-Key`(значение из `API_KEY` в `.env`)., `Idempotency-Key` (UUID, обязателен)
-- **Ответ:** `202 Accepted` — `payment_id`, `status` (`PENDING`), `created_at`
-- **Тело:** `amount` (decimal > 0), `currency` (`RUB` / `USD` / `EUR`), `description`, `metadata`, `webhook_url`
+- **Headers:** `X-API-Key`(значение из `API_KEY` в `.env`)., `Idempotency-Key` (UUID)
+- **Response:** `202 Accepted` — `payment_id`, `status` (`PENDING`), `created_at`
+- **Body:** `amount`, `currency` (`RUB` / `USD` / `EUR`), `description`, `metadata`, `webhook_url`
 - **Идемпотентность:** повтор с тем же `Idempotency-Key` вернёт ранее созданный платеж
 
 ### GET /api/v1/payments/{payment_id}
