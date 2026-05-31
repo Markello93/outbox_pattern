@@ -1,0 +1,143 @@
+name: "payments-service"
+x-logging-common: &logging-common
+  logging:
+    options:
+      max-size: "10m"
+      max-file: "3"
+services:
+  payment_api:
+    container_name: payment-api
+    build:
+      context: ../../
+      dockerfile: "./Dockerfile"
+    command: ["bash", "-c", "alembic upgrade head && uvicorn app.api.main:app --host 0.0.0.0 --port 8000"]
+    volumes:
+      - ../../:/app
+    depends_on:
+      payment_db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./.env
+    restart: always
+    <<: *logging-common
+
+  payment_consumer:
+    container_name: payment-consumer
+    build:
+      context: ../../
+      dockerfile: "./Dockerfile"
+    command: ["python", "-m", "app.consumers.main"]
+    volumes:
+      - ../../:/app
+    depends_on:
+      payment_db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      webhook_mock:
+        condition: service_started
+    ports:
+      - "8002:8002"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    env_file:
+      - ./.env
+    restart: always
+    <<: *logging-common
+
+  webhook_mock:
+    container_name: webhook-mock
+    build:
+      context: ../../
+      dockerfile: "./Dockerfile"
+    command: ["uvicorn", "webhook_mock.main:app", "--host", "0.0.0.0", "--port", "8001"]
+    volumes:
+      - ../../:/app
+    ports:
+      - "8001:8001"
+    restart: always
+    <<: *logging-common
+
+  outbox_workers:
+    container_name: outbox-workers
+    build:
+      context: ../../
+      dockerfile: "./Dockerfile"
+    command: ["bash", "-c", "taskiq scheduler app.workers.main:scheduler & taskiq worker app.workers.main:broker"]
+    volumes:
+      - ../../:/app
+    depends_on:
+      payment_db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - ./.env
+    restart: always
+    <<: *logging-common
+
+  payment_db:
+    image: postgres:16
+    container_name: payment-db
+    volumes:
+      - payment_db_data:/var/lib/postgresql/data/
+    env_file:
+      - ./.env
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 1s
+      timeout: 5s
+      retries: 10
+    restart: always
+    <<: *logging-common
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: payment-rabbitmq
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq/
+    env_file:
+      - ./.env
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_port_connectivity"]
+      interval: 5s
+      timeout: 10s
+      retries: 10
+      start_period: 10s
+    restart: always
+    <<: *logging-common
+
+  redis:
+    image: redis:7
+    container_name: payment-redis
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: always
+    <<: *logging-common
+
+volumes:
+  payment_db_data:
+  rabbitmq_data:
+  redis_data:

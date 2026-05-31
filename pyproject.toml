@@ -1,0 +1,82 @@
+[tool.poetry]
+name = "payments-service"
+version = "0.1.0"
+description = "Асинхронный сервис процессинга платежей (FastAPI + RabbitMQ + Outbox)"
+authors = ["Vyacheslav.v.v <vyacheslav.v@itfox-web.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+# API
+fastapi = {extras = ["standard"], version = "^0.115.2"}
+uvicorn = "^0.31.1"
+pydantic = "^2.9.2"
+pydantic-settings = "^2.5.2"
+# БД
+sqlalchemy = "^2.0.35"
+asyncpg = "^0.29.0"
+alembic = "^1.13.3"
+# Брокер сообщений
+faststream = {extras = ["rabbit"], version = "^0.5.0"}
+# Воркеры / планировщик
+taskiq = {extras = ["metrics"], version = "^0.11.18"}
+taskiq-redis = "^1.1.0"
+# Webhook-клиент и метрики
+httpx = "^0.27.2"
+prometheus-client = "^0.23.1"
+punq = "^0.7.0"
+
+[tool.poetry.group.dev.dependencies]
+black = "^24.10.0"
+isort = "^5.13.2"
+ruff = "^0.6.9"
+
+[tool.poetry.group.test.dependencies]
+pytest = {extras = ["async"], version = "^8.3.3"}
+pytest-asyncio = "^0.21.1"
+respx = "^0.21.1"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+pythonpath = ["."]
+
+
+[tool.black]
+line-length = 110
+target-version = ['py312']  # Целевая версия Python
+
+[tool.isort]
+py_version = 312
+profile = "black"  # Совместимость с Black (использует правила форматирования Black)
+line_length = 110  # Длина строки (должна совпадать с Black)
+multi_line_output = 3  # Определяет стиль вывода (3 — вертикальный вывод, предпочтительный для Black)
+include_trailing_comma = true  # Включить запятую в конце списка
+force_grid_wrap = 0  # Разбиение по сетке (0 для выключения)
+use_parentheses = true  # Использование скобок для длинных импортов
+ensure_newline_before_comments = true  # Перенос строки перед комментариями
+virtual_env = "./.venv"
+skip = [".venv", "venv", "app/core/database/revisions"]
+
+[tool.ruff]
+line-length = 110
+lint.select = [
+  "F", "E", "W", "C90", "UP",
+  "N", "YTT", "S", "BLE", "FBT",
+  "B", "A", "C4", "T20", "Q",
+  "RET", "SIM", "ARG", "ERA",
+  "PGH"
+]
+target-version = "py312" 
+exclude = [
+    ".git",
+    "__pycache__",
+    "app/core/database/revisions",
+    ".venv",
+]
+lint.ignore = ["S104", "B008", "S101", "N802", "FBT001", "FBT002"]
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

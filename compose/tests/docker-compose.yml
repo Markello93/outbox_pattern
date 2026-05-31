@@ -1,0 +1,35 @@
+name: payments-service-tests
+
+services:
+  test_payment_db:
+    image: postgres:16
+    container_name: test-payment-db
+    environment:
+      POSTGRES_USER: test_user
+      POSTGRES_PASSWORD: test_password
+      POSTGRES_DB: test_payments
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 1s
+      timeout: 5s
+      retries: 10
+
+  test_payment_runner:
+    build:
+      context: ../..
+      dockerfile: "./Dockerfile"
+    container_name: test-payment-runner
+    depends_on:
+      test_payment_db:
+        condition: service_healthy
+    env_file:
+      - .env
+    volumes:
+      - ../../:/app
+    working_dir: /app
+    command: >
+      bash -c "
+      alembic upgrade head &&
+      pytest tests -vv
+      "
+    restart: "no"
